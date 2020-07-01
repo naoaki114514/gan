@@ -13,10 +13,10 @@ import torchvision.utils as vutils
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
-os.makedirs("./D0001G0002", exist_ok=True)
-os.makedirs("./D0001G0002/generated_images", exist_ok=True)
-os.makedirs("./D0001G0002/real_images", exist_ok=True)
-save_path = "./D0001G0002/loss.png"
+os.makedirs("./D0002G0002", exist_ok=True)
+os.makedirs("./D0002G0002/generated_images", exist_ok=True)
+os.makedirs("./D0002G0002/real_images", exist_ok=True)
+save_path = "./D0002G0002/loss.png"
 
 # random seed 設定
 torch.manual_seed(1111)
@@ -24,7 +24,6 @@ np.random.seed(1111)
 random.seed(1111)
 
 batch_size = 64 #一度に学習するデータ量
-loss_interval = 50 #test_lossを計算する間隔
 
 #変換器の作成
 transform = transforms.Compose([transforms.Resize(64),
@@ -32,11 +31,9 @@ transform = transforms.Compose([transforms.Resize(64),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])  # 正規化する
  
 #訓練データのダウンロードと変換設定
-trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                        download=True, transform=transform)
+trainset = torchvision.datasets.CIFAR10(root='./data', train=True,download=True, transform=transform)
 #訓練データのローダ(読み込み器)の作成
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                          shuffle=True, num_workers=2)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,shuffle=True, num_workers=2)
 nc = 3
 
 class Generator(nn.Module):
@@ -97,7 +94,7 @@ netD = Discriminator().to(device)
 real_label = 1
 fake_label = 0
 
-optimizerD = optim.Adam(netD.parameters(), lr = 0.0001, betas=(0.5, 0.999))
+optimizerD = optim.Adam(netD.parameters(), lr = 0.0002, betas=(0.5, 0.999))
 optimizerG = optim.Adam(netG.parameters(), lr = 0.0002, betas=(0.5, 0.999))
 
 criterion = nn.BCELoss()
@@ -113,6 +110,8 @@ def train(netD, netG, criterion, optimizerD, optimizerG, n_epoch, batch):
     D_loss = []
     G_loss = []
     for epoch in range(n_epoch):
+        errD_loss = 0
+        errG_loss = 0
         for i, data in enumerate(trainloader, 0):
             if data[0].to(device).size()[0] != batch:
               #一番最後はbatch_sizeに満たない場合は無視する
@@ -131,7 +130,7 @@ def train(netD, netG, criterion, optimizerD, optimizerG, n_epoch, batch):
             errD_real = criterion(output, label)#label = 1だと、BCEは-log(x)になるのでx = 1(本物を本物にしたい)に近くなると嬉しい
 
             errD_real.backward()
-            D_x = output.mean().item()
+            #D_x = output.mean().item()
 
             # 偽物を見分ける
             noise = torch.randn(batch_size, nz, 1, 1, device=device)#正規分布
@@ -143,6 +142,7 @@ def train(netD, netG, criterion, optimizerD, optimizerG, n_epoch, batch):
             errD_fake = criterion(output, label)#label = 0だと、BCEは-log(1-x)になるのでx = 0(偽物を偽物にしたい)に近くなると嬉しい
             errD_fake.backward()
             errD = errD_real + errD_fake
+            errD_loss = errD_loss + errD.item()
             optimizerD.step()#これでGのパラメータは更新されない
 
             # Generatorの学習
@@ -151,6 +151,7 @@ def train(netD, netG, criterion, optimizerD, optimizerG, n_epoch, batch):
             output = netD(fake)
 
             errG = criterion(output, label)#label = 1だと、BCEは-log(x)になるのでx = 1(偽物を本物にしたい、騙したい)に近くなると嬉しい
+            errG_loss = errG_loss + errG.item()
             #実際の式とは少し異なる
             errG.backward()
             optimizerG.step()
@@ -161,11 +162,11 @@ def train(netD, netG, criterion, optimizerD, optimizerG, n_epoch, batch):
     
         joined_real = torchvision.utils.make_grid(real, nrow=8, padding=3)
         joined_fake = torchvision.utils.make_grid(fake, nrow=8, padding=3)
-        vutils.save_image(joined_fake.detach(), './D0001G0002/generated_images/fake_samples_epoch_%03d.png' % (epoch+1),normalize=True)
-        vutils.save_image(joined_real, './D0001G0002/real_images/real_samples_epoch_%03d.png' % (epoch+1), normalize=True)
+        vutils.save_image(joined_fake.detach(), './D0002G0002/generated_images/fake_samples_epoch_%03d.png' % (epoch+1),normalize=True)
+        vutils.save_image(joined_real, './D0002G0002/real_images/real_samples_epoch_%03d.png' % (epoch+1), normalize=True)
 
-        D_loss.append(errD.item())
-        G_loss.append(errG.item())
+        D_loss.append(errD_loss/len(trainloader))
+        G_loss.append(errG_loss/len(trainloader))
                    
     print('Finished Training')
     return D_loss, G_loss
@@ -174,7 +175,7 @@ def train(netD, netG, criterion, optimizerD, optimizerG, n_epoch, batch):
 def show_loss(D_loss, G_loss, save_path):
     plt.xlabel("epoch")
     plt.ylabel("loss")
-    x = [i*loss_interval for i in range(len(D_loss))]
+    x = [i for i in range(len(D_loss))]
     plt.plot(x, D_loss, label='D_loss')
     plt.plot(x, G_loss, label='G_loss')
     plt.legend()
