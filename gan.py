@@ -13,10 +13,13 @@ import torchvision.utils as vutils
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
-os.makedirs("./D0002G0002", exist_ok=True)
-os.makedirs("./D0002G0002/generated_images", exist_ok=True)
-os.makedirs("./D0002G0002/real_images", exist_ok=True)
-save_path = "./D0002G0002/loss.png"
+lr_d = 0.000014#Discriminatorの学習率
+lr_g = 0.0002#Generatorの学習率
+main_folder = "./D000014G0002_LeakyReLU"
+os.makedirs(main_folder, exist_ok=True)
+os.makedirs(os.path.join(main_folder, "generated_images"), exist_ok=True)
+os.makedirs(os.path.join(main_folder, "real_images"), exist_ok=True)
+save_path = os.path.join(main_folder, "loss.png")
 
 # random seed 設定
 torch.manual_seed(1111)
@@ -32,7 +35,7 @@ transform = transforms.Compose([transforms.Resize(64),
  
 #訓練データのダウンロードと変換設定
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True,download=True, transform=transform)
-#訓練データのローダ(読み込み器)の作成
+#訓練データのローダの作成
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,shuffle=True, num_workers=2)
 nc = 3
 
@@ -44,16 +47,16 @@ class Generator(nn.Module):
     self.main = nn.Sequential(
         nn.ConvTranspose2d(self.nz, self.nf * 8, 4, 1, 0, bias=False),
         nn.BatchNorm2d(self.nf * 8),
-        nn.ReLU(),
+        nn.LeakyReLU(0.2, inplace = True),
         nn.ConvTranspose2d(self.nf * 8, self.nf * 4, 4, 2, 1, bias=False),
         nn.BatchNorm2d(self.nf * 4),
-        nn.ReLU(),
+        nn.LeakyReLU(0.2, inplace = True),
         nn.ConvTranspose2d(self.nf * 4, self.nf * 2, 4, 2, 1, bias=False),
         nn.BatchNorm2d(self.nf * 2),
-        nn.ReLU(),
+        nn.LeakyReLU(0.2, inplace = True),
         nn.ConvTranspose2d(self.nf * 2, self.nf, 4, 2, 1, bias=False),
         nn.BatchNorm2d(self.nf),
-        nn.ReLU(),
+        nn.LeakyReLU(0.2, inplace = True),
         nn.ConvTranspose2d(self.nf, nc, 4, 2, 1, bias=False),
         nn.Tanh() 
 
@@ -94,8 +97,8 @@ netD = Discriminator().to(device)
 real_label = 1
 fake_label = 0
 
-optimizerD = optim.Adam(netD.parameters(), lr = 0.0002, betas=(0.5, 0.999))
-optimizerG = optim.Adam(netG.parameters(), lr = 0.0002, betas=(0.5, 0.999))
+optimizerD = optim.Adam(netD.parameters(), lr = lr_d, betas=(0.5, 0.999))
+optimizerG = optim.Adam(netG.parameters(), lr = lr_g, betas=(0.5, 0.999))
 
 criterion = nn.BCELoss()
 """
@@ -151,19 +154,21 @@ def train(netD, netG, criterion, optimizerD, optimizerG, n_epoch, batch):
             output = netD(fake)
 
             errG = criterion(output, label)#label = 1だと、BCEは-log(x)になるのでx = 1(偽物を本物にしたい、騙したい)に近くなると嬉しい
-            errG_loss = errG_loss + errG.item()
             #実際の式とは少し異なる
+            errG_loss = errG_loss + errG.item()
             errG.backward()
             optimizerG.step()
-            print('[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f' % (epoch+1, n_epoch, i, len(trainloader),
-                 errD.item(), errG.item()))
+            #print('[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f' % (epoch+1, n_epoch, i, len(trainloader),errD.item(), errG.item()))
+            print("[{0:d}/{1:d}][{2:d}/{3:d}] Loss_D: {4:.4f} Loss_G: {5:.4f}".format(epoch+1, n_epoch, i, len(trainloader), errD.item(), errG.item()))
   
         fake = netG(fixed_noise)
     
         joined_real = torchvision.utils.make_grid(real, nrow=8, padding=3)
         joined_fake = torchvision.utils.make_grid(fake, nrow=8, padding=3)
-        vutils.save_image(joined_fake.detach(), './D0002G0002/generated_images/fake_samples_epoch_%03d.png' % (epoch+1),normalize=True)
-        vutils.save_image(joined_real, './D0002G0002/real_images/real_samples_epoch_%03d.png' % (epoch+1), normalize=True)
+        #vutils.save_image(joined_fake.detach(), './D000014G0002/generated_images/fake_samples_epoch_%03d.png' % (epoch+1),normalize=True)
+        vutils.save_image(joined_fake.detach(), os.path.join(main_folder, "generated_images/fake_samples_epoch_{0:03d}.png".format(epoch+1)),normalize=True)
+        #vutils.save_image(joined_real, './D000014G0002/real_images/real_samples_epoch_%03d.png' % (epoch+1), normalize=True)
+        vutils.save_image(joined_real, os.path.join(main_folder, "real_images/real_samples_epoch_{0:03d}.png".format(epoch+1)), normalize=True)
 
         D_loss.append(errD_loss/len(trainloader))
         G_loss.append(errG_loss/len(trainloader))
