@@ -15,7 +15,8 @@ print(device)
 
 lr_d = 0.000014#Discriminatorの学習率
 lr_g = 0.0002#Generatorの学習率
-main_folder = "./D000014G0002_LeakyReLU"
+nz = 100#random noisze z 潜在変数の次元
+main_folder = "./D000014G0002_LeakyReLU_dropout"
 os.makedirs(main_folder, exist_ok=True)
 os.makedirs(os.path.join(main_folder, "generated_images"), exist_ok=True)
 os.makedirs(os.path.join(main_folder, "real_images"), exist_ok=True)
@@ -59,6 +60,7 @@ class Generator(nn.Module):
         nn.LeakyReLU(0.2, inplace = True),
         nn.ConvTranspose2d(self.nf, nc, 4, 2, 1, bias=False),
         nn.Tanh() 
+        #nn.Sigmoid()
 
     )
   def forward(self, input):
@@ -72,15 +74,19 @@ class Discriminator(nn.Module):
     self.main = nn.Sequential(
         nn.Conv2d(nc, self.nf, 4, 2, 1, bias = False),
         nn.LeakyReLU(0.2, inplace = True),
+        nn.Dropout(0.5),
         nn.Conv2d(self.nf, self.nf * 2, 4, 2, 1, bias = False),
         nn.BatchNorm2d(self.nf * 2),
         nn.LeakyReLU(0.2, inplace = True),
+        nn.Dropout(0.5),
         nn.Conv2d(self.nf * 2, self.nf * 4, 4, 2, 1, bias = False),
         nn.BatchNorm2d(self.nf * 4),
         nn.LeakyReLU(0.2, inplace = True),
+        nn.Dropout(0.5),
         nn.Conv2d(self.nf * 4, self.nf * 8, 4, 2, 1, bias = False),
         nn.BatchNorm2d(self.nf * 8),
         nn.LeakyReLU(0.2, inplace = True),
+        nn.Dropout(0.5),
         nn.Conv2d(self.nf * 8, 1, 4, 1, 0, bias = False),
         nn.Sigmoid()
     )
@@ -88,7 +94,7 @@ class Discriminator(nn.Module):
     output = self.main(input)
     return output.view(-1, 1).squeeze(1)
 
-nz = 100
+
 fixed_noise = torch.randn(batch_size, nz, 1, 1, device = device)#正規分布
 
 netG = Generator(nz).to(device)
