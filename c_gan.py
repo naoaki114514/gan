@@ -150,7 +150,7 @@ def train(netD, netG, criterion, optimizerD, optimizerG, n_epoch, batch):
             real_image = data[0].to(device)
             real_label = data[1].to(device)
 
-            real_image_label = concat_image_label(real_image, real_label, device, 10)#リアル画像とリアルラベルを生成 (n, c+10, h, w)
+            real_image_label = concat_image_label(real_image, real_label, device)#リアル画像とリアルラベルを生成 (n, c+10, h, w)
 
             sample_size = real_image.size()[0]#バッチサイズ
             noise = torch.randn(sample_size, nz, 1, 1, device=device)
