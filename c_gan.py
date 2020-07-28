@@ -19,9 +19,9 @@ nc = 3#生成する画像のチャンネル
 batch_size = 64 #一度に学習するデータ量
 epoch_number = 200#epoch数
 
-lr_d = 0.000015#Discriminatorの学習率
+lr_d = 0.00002#Discriminatorの学習率
 lr_g = 0.0002#Generatorの学習率
-main_folder = "./D000014G0002_conditional_epoch200"
+main_folder = "./D00002G0002_conditional_epoch200"
 os.makedirs(main_folder, exist_ok=True)
 os.makedirs(os.path.join(main_folder, "generated_images"), exist_ok=True)
 os.makedirs(os.path.join(main_folder, "real_images"), exist_ok=True)
@@ -125,12 +125,13 @@ netD = Discriminator(nc+10).to(device)
 optimizerD = optim.Adam(netD.parameters(), lr = lr_d, betas=(0.5, 0.999))
 optimizerG = optim.Adam(netG.parameters(), lr = lr_g, betas=(0.5, 0.999))
 
-criterion = nn.BCELoss()
+criterion = nn.MSELoss()
 """
-BCE(x, y) = -(y*log(x) + (1-y)*log(1-x))
+MSE(x, y) = (x-y)**2
 x cnn output
 y ground truth label
 """
+
 #ネットワークを訓練する関数
 def train(netD, netG, criterion, optimizerD, optimizerG, n_epoch, batch):
     netD.train()  # ネットワークを訓練状態へ切り替える
