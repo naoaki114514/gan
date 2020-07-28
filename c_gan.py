@@ -17,11 +17,11 @@ n_class = 10#ラベルの種類
 nz = 100#潜在変数の次元
 nc = 3#生成する画像のチャンネル
 batch_size = 64 #一度に学習するデータ量
-epoch_number = 100#epoch数
+epoch_number = 200#epoch数
 
-lr_d = 0.000014#Discriminatorの学習率
+lr_d = 0.000015#Discriminatorの学習率
 lr_g = 0.0002#Generatorの学習率
-main_folder = "./D000014G0002_conditional"
+main_folder = "./D000014G0002_conditional_epoch200"
 os.makedirs(main_folder, exist_ok=True)
 os.makedirs(os.path.join(main_folder, "generated_images"), exist_ok=True)
 os.makedirs(os.path.join(main_folder, "real_images"), exist_ok=True)
@@ -116,8 +116,6 @@ def concat_noise_label(noise, label, device):
 
 
 fixed_noise = torch.randn(batch_size, nz, 1, 1, device = device)#正規分布
-#fixed_label = [i for i  in range(10)]*(batch_size//10)
-#fixed_label = torch.tensor(fixed_label, dtype=torch.long, device=device)#確認用のラベル
 fixed_label = torch.randint(10, (batch_size, ), dtype=torch.long, device=device)#fake生成用のラベル
 fixed_noise_label = concat_noise_label(fixed_noise, fixed_label, device)#確認用のノイズとラベルを連結
 
